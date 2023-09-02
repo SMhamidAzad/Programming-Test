@@ -3,28 +3,22 @@
   import { onMount } from "svelte";
   import Chart from "chart.js/auto";
 
-  let countryData = [];
+  let allCountryData = [];
   countryDataStore.subscribe((data) => {
-    console.log(data);
-    countryData = data;
+    allCountryData = data;
   });
 
-  if (countryData) {
-    let chart;
+  let chart;
 
-    function prepareData(data) {
-      data.sort((a, b) => b.population - a.population);
-      const top10Countries = data.slice(0, 10);
+  onMount(() => {
+    const ctx = document.getElementById("polarAreaChart").getContext("2d");
+    setTimeout(() => {
+      allCountryData.sort((a, b) => b.population - a.population);
+      const top10Countries = allCountryData.slice(0, 10);
       const labels = top10Countries.map((country) => country.name.common);
       const populationData = top10Countries.map(
         (country) => country.population
       );
-      return { labels, populationData };
-    }
-
-    onMount(() => {
-      const ctx = document.getElementById("polarAreaChart").getContext("2d");
-      const { labels, populationData } = prepareData(countryData);
       chart = new Chart(ctx, {
         type: "polarArea",
         data: {
@@ -32,18 +26,7 @@
           datasets: [
             {
               data: populationData,
-              backgroundColor: [
-                "rgba(255, 99, 132, 0.6)",
-                "rgba(54, 162, 235, 0.6)",
-                "rgba(255, 206, 86, 0.6)",
-                "rgba(75, 192, 192, 0.6)",
-                "rgba(153, 102, 255, 0.6)",
-                "rgba(255, 159, 64, 0.6)",
-                "rgba(255, 99, 132, 0.6)",
-                "rgba(54, 162, 235, 0.6)",
-                "rgba(255, 206, 86, 0.6)",
-                "rgba(75, 192, 192, 0.6)",
-              ],
+              backgroundColor: ["#454545", "#C0C0C0"],
             },
           ],
         },
@@ -52,12 +35,18 @@
           plugins: {
             legend: {
               position: "bottom",
+              align: "start",
+              labels: {
+                boxWidth: 10,
+                boxHeight: 10,
+                borderRadius: 50,
+              },
             },
           },
         },
       });
-    });
-  }
+    }, 1000);
+  });
 </script>
 
 <main>
@@ -110,15 +99,14 @@
                   </tr>
                 </thead>
                 <tbody>
-                  {#each countryData as country (country.flags?.png)}
+                  {#each allCountryData as country (country.flags?.png)}
                     {#if country}
                       <tr>
                         <td
-                          class="pl-10 py-3  border-b border-gray-200 bg-white text-sm"
+                          class="pl-10 py-3 border-b border-gray-200 bg-white text-sm"
                         >
-                       
                           <img
-                            class="w-20 h-8"
+                            class="w-24 h-8"
                             src={country.flags?.png}
                             alt={country.name?.common}
                           />
@@ -139,7 +127,7 @@
                           {country.cioc}
                         </td>
                         <td
-                          class="pl-10 py-3  border-b border-gray-200 bg-white text-sm"
+                          class="pl-10 py-3 border-b border-gray-200 bg-white text-sm"
                         >
                           {#if country.unMember}
                             <span
@@ -163,13 +151,19 @@
                           class="pl-16 py-3 border-b border-gray-200 bg-white text-sm"
                         >
                           {#if country.languages && typeof country.languages === "object"}
-                            {#each Object.keys(country.languages) as langCode}
-                              <span>
+                            {#if Object.keys(country.languages).length > 1}
+                              {#each Object.keys(country.languages) as langCode, index}
                                 {country.languages[langCode]}
-                              </span>
-                            {/each}
+                                {#if index < Object.keys(country.languages).length - 1},
+                                {/if}
+                              {/each}
+                            {:else}
+                              {#each Object.keys(country.languages) as langCode}
+                                {country.languages[langCode]}
+                              {/each}
+                            {/if}
                           {:else}
-                            <p>No languages found.</p>
+                            <p>Not Found</p>
                           {/if}
                         </td>
                       </tr>
@@ -181,7 +175,7 @@
           </div>
         </div>
       </div>
-      <div class=" mt-12">
+      <div class=" mt-12 mr-6">
         <div class="bg-white rounded-md">
           <div class="font-medium border-b border-gray-200 py-5 px-5">
             <h1>Countries</h1>
