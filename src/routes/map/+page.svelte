@@ -1,59 +1,32 @@
 <script>
     import { onMount } from "svelte";
-    import "ol/ol.css";
-    import View from "ol/View";
     import Map from "ol/Map";
+    import View from "ol/View";
+    import TileLayer from "ol/layer/Tile";
+    import VectorLayer from "ol/layer/Vector";
+    import VectorSource from "ol/source/Vector";
     import GeoJSON from "ol/format/GeoJSON";
-    import { OSM, Vector as VectorSource } from "ol/source";
-    import { Tile as TileLayer, Vector as VectorLayer } from "ol/layer";
-    import { Style, Fill } from "ol/style";
-    import { geoJsonDataStore } from "../../stores/geoJsonData";
-    import { useGeographic } from "ol/proj";
+    import OSM from "ol/source/OSM";
+    import { fromLonLat } from "ol/proj";
+    import { Fill, Style } from "ol/style";
 
-    let geoJsonData = [];
-    
-    let map; // Declare map here
+    onMount(async () => {
+        const response = await fetch(`/countries.geojson`);
+        const geojsonData = await response.json();
 
-    // useGeographic(); 
-    geoJsonDataStore.subscribe((data) => {
-        geoJsonData = data;
-
-        // After the GeoJSON data is fetched, add it to the map
-        if (map) {
-            addGeoJSONToMap();
-        }
-    });
-   
-    onMount(() => {
-        // Create a map
-        map = new Map({
-            target: "map",
-            layers: [
-                new TileLayer({
-                    source: new OSM(),
-                }),
-            ],
-            view: new View({
-                center: [0, 0],
-                zoom: 5, // Increase the zoom level
+        const vectorSource = new VectorSource({
+            format: new GeoJSON(),
+            features: new GeoJSON().readFeatures(geojsonData, {
+                dataProjection: "EPSG:4326",
+                featureProjection: "EPSG:3857",
             }),
         });
 
-        // Add GeoJSON to map if data is available
-        if (geoJsonData) {
-            addGeoJSONToMap();
-        }
-    });
-
-    // Function to add GeoJSON data to the map
-    function addGeoJSONToMap() {
-        if (map && geoJsonData && geoJsonData.features) {
-            const sourceVector = new VectorSource({
-                features: new GeoJSON().readFeatures(geoJsonData),
-            });
-
-            const vectorLayer = new VectorLayer({
-                source: sourceVector,
+        // const vectorLayer = new VectorLayer({
+        //     source: vectorSource,
+        // });
+        const vectorLayer = new VectorLayer({
+                source: vectorSource,
                 style: new Style({
                     fill: new Fill({
                         color: "#006a4e75",
@@ -61,22 +34,31 @@
                     }),
                 }),
             });
+        const map = new Map({
+            target: "map",
+            layers: [
+                new TileLayer({
+                    source: new OSM(),
+                }),
+                vectorLayer,
+            ],
+            view: new View({
+                center: fromLonLat([0, 0]),
+                zoom: 2,
+            }),
+        });
 
-            map.addLayer(vectorLayer);
-
-            // Fit the map view to the extent of the GeoJSON data
-            map.getView().fit(sourceVector.getExtent());
-            console.log("Extent:", sourceVector.getExtent());
-        }
-    }
-
+        return () => {
+            map.dispose();
+        };
+    });
 </script>
 
 <div id="map" />
 
 <style>
     #map {
-        width: 100vw;
-        height: 100vh;
+        width: 100%;
+        height: 1000px;
     }
 </style>
